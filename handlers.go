@@ -40,6 +40,12 @@ func HomeHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the registration page
 func RegisterHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/register.html")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+	}
+	
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
@@ -51,7 +57,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.Form.Get("password")
 
 		if username == "" || password == "" {
-			tmpl, _ := template.ParseFiles("templates/register.html")
 			tmpl.Execute(w, map[string]string{"Message": "Username and password cannot be empty"})
 			return
 		}
@@ -64,7 +69,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 		_, err = DB.Exec("INSERT INTO users (username, password) VALUES (?, ?)", username, string(hashedPassword))
 		if err != nil {
-			tmpl, _ := template.ParseFiles("templates/register.html")
 			if strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				tmpl.Execute(w, map[string]string{"Message": "Username already exists"})
 			} else {
@@ -77,11 +81,6 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/register.html")
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
 	tmpl.Execute(w, nil)
 }
 
