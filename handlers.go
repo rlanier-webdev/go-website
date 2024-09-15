@@ -6,8 +6,11 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var store = sessions.NewCookieStore([]byte("your-secret-key"))
 
 type GreetingData struct {
 	Name string
@@ -19,23 +22,25 @@ type LoginData struct {
 
 // Handler for the home page
 func HomeHandler(w http.ResponseWriter, r *http.Request) {
-	username := r.URL.Query().Get("username")
+	// Retrieve the session
+	session, _ := store.Get(r, "session-name")
 
-	data := map[string]string{
-		"Username": username,
+	// Get the username from the session
+	username, ok := session.Values["username"].(string)
+	if !ok {
+		http.Redirect(w, r, "/login", http.StatusFound) // Redirect to login if not authenticated
+		return
 	}
 
+	// Parse the index.html template
 	tmpl, err := template.ParseFiles("templates/index.html")
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
-	err = tmpl.Execute(w, data)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	// Execute the template, passing in the username
+	tmpl.Execute(w, map[string]string{"Username": username})
 }
 
 // Handler for the registration page
@@ -43,9 +48,9 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl, err := template.ParseFiles("templates/register.html")
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-			return
+		return
 	}
-	
+
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
@@ -86,6 +91,12 @@ func RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 // Handler for the login page
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	tmpl, err := template.ParseFiles("templates/login.html")
+	if err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	if r.Method == http.MethodPost {
 		err := r.ParseForm()
 		if err != nil {
@@ -97,13 +108,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.Form.Get("password")
 
 		if verifyLogin(DB, username, password) {
-			http.Redirect(w, r, "/?username="+username, http.StatusFound)
-			return
-		}
+			// Create a session and set the username
+			session, _ := store.Get(r, "session-name")
+			session.Values["username"] = username
+			session.Save(r, w)
 
-		tmpl, err := template.ParseFiles("templates/login.html")
-		if err != nil {
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Redirect(w, r, "/", http.StatusFound)
 			return
 		}
 
@@ -115,17 +125,22 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tmpl, err := template.ParseFiles("templates/login.html")
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	tmpl.Execute(w, nil)
+}
 
-	err = tmpl.Execute(w, nil)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+func LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	// Get the session
+	session, _ := store.Get(r, "session-name")
+
+	// Clear the session data
+	session.Values["username"] = ""
+	session.Options.MaxAge = -1 // This expires the session
+
+	// Save the session changes
+	session.Save(r, w)
+
+	// Redirect to the login page
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 // Function to verify login credentials

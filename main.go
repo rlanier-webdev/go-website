@@ -27,6 +27,8 @@ func main() {
 	router.HandleFunc("/", HomeHandler).Methods(http.MethodGet)
 	router.HandleFunc("/login", LoginHandler).Methods(http.MethodGet, http.MethodPost)
 	router.HandleFunc("/register", RegisterHandler).Methods(http.MethodGet, http.MethodPost)
+	router.HandleFunc("/logout", LogoutHandler).Methods(http.MethodGet, http.MethodPost)
+
 
 	// Serve static files from the "static" directory
 	router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

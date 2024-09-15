@@ -1,8 +1,9 @@
+html,
 body {
-     font-family: Arial, Helvetica, sans-serif;
-     margin: 20px;
+     height: 100%;
+     min-height: 75rem;
+     padding-top: 3.5rem;
 }
-
 h1 {
      font-size: 35px;
 }
